@@ -3,13 +3,17 @@
 
 #include "stdafx.h"
 #include "ProtectMySelf.h"
+#include <WtsApi32.h>
 
+#pragma comment(lib,"wtsapi32.lib")
 #define MAX_LOADSTRING 100
+#define IDC_TIMER 999
 
 // 전역 변수:
 HINSTANCE hInst;								// 현재 인스턴스입니다.
 TCHAR szTitle[MAX_LOADSTRING];					// 제목 표시줄 텍스트입니다.
 TCHAR szWindowClass[MAX_LOADSTRING];			// 기본 창 클래스 이름입니다.
+BOOL fBlocked;
 
 // 이 코드 모듈에 들어 있는 함수의 정방향 선언입니다.
 ATOM				MyRegisterClass(HINSTANCE hInstance);
@@ -18,14 +22,14 @@ LRESULT CALLBACK	WndProc(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK	About(HWND, UINT, WPARAM, LPARAM);
 
 int APIENTRY _tWinMain(HINSTANCE hInstance,
-                     HINSTANCE hPrevInstance,
-                     LPTSTR    lpCmdLine,
-                     int       nCmdShow)
+	HINSTANCE hPrevInstance,
+	LPTSTR    lpCmdLine,
+	int       nCmdShow)
 {
 	UNREFERENCED_PARAMETER(hPrevInstance);
 	UNREFERENCED_PARAMETER(lpCmdLine);
 
- 	// TODO: 여기에 코드를 입력합니다.
+	// TODO: 여기에 코드를 입력합니다.
 	MSG msg;
 	HACCEL hAccelTable;
 
@@ -103,22 +107,34 @@ ATOM MyRegisterClass(HINSTANCE hInstance)
 //
 BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 {
-   HWND hWnd;
+	HWND hWnd;
 
-   hInst = hInstance; // 인스턴스 핸들을 전역 변수에 저장합니다.
+	hInst = hInstance; // 인스턴스 핸들을 전역 변수에 저장합니다.
 
-   hWnd = CreateWindow(szWindowClass, szTitle, WS_OVERLAPPEDWINDOW,
-      CW_USEDEFAULT, 0, CW_USEDEFAULT, 0, NULL, NULL, hInstance, NULL);
+	hWnd = CreateWindow(szWindowClass, szTitle, WS_EX_TOOLWINDOW | WS_SYSMENU | WS_CAPTION,
+		0, 0, 0, 0, NULL, NULL, hInstance, NULL);
 
-   if (!hWnd)
-   {
-      return FALSE;
-   }
+	if (!hWnd)
+	{
+		return FALSE;
+	}
 
-   ShowWindow(hWnd, nCmdShow);
-   UpdateWindow(hWnd);
 
-   return TRUE;
+	RECT rc = {0};
+	if (::SystemParametersInfoW(SPI_GETWORKAREA, 0, &rc, 0))
+	{
+		rc.left = rc.right;
+		rc.top = rc.bottom;
+	}
+	::SetWindowPos(hWnd, NULL, rc.left, rc.top, 0, 0, SWP_HIDEWINDOW);
+
+	fBlocked = FALSE;
+	::SetTimer(hWnd, IDC_TIMER,  50*60*1000, 0);
+	::WTSRegisterSessionNotification(hWnd, NOTIFY_FOR_ALL_SESSIONS);
+	//    ShowWindow(hWnd, nCmdShow);
+	//    UpdateWindow(hWnd);
+
+	return TRUE;
 }
 
 //
@@ -161,7 +177,27 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		EndPaint(hWnd, &ps);
 		break;
 	case WM_DESTROY:
+		KillTimer(hWnd, IDC_TIMER);
 		PostQuitMessage(0);
+		break;
+	case WM_TIMER:
+		if(IDC_TIMER == wParam && FALSE == fBlocked)
+		{
+			BlockInput(TRUE);
+			LockWorkStation();
+		}
+		break;
+	case WM_WTSSESSION_CHANGE:
+		if(WTS_SESSION_LOCK == wParam)
+		{
+			fBlocked = TRUE;
+			KillTimer(hWnd, IDC_TIMER);
+		}
+		else if(WTS_SESSION_UNLOCK == wParam)
+		{
+			fBlocked = FALSE;
+			SetTimer(hWnd, IDC_TIMER, 50*60*1000, 0);
+		}
 		break;
 	default:
 		return DefWindowProc(hWnd, message, wParam, lParam);
