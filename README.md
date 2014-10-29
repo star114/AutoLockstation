@@ -15,11 +15,11 @@ Please Take a rest for your Health.
 7. Take a rest and Enjoy your job.
 
 [ Skills ]
-
+----------
 C++, Windows, Visual Studio 2010, 
 
 [ Addition ]
-
+----------
 Interval Time Can be Edited.
 
 Only For Windows, Now.
