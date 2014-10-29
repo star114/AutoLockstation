@@ -1,7 +1,7 @@
-ProtectMySelf
+AutoLockstation
 =============
 
-Every 50 Minutes, Auto Lock Your PC for WorkerHolic. 
+Every 50 Minutes, Auto Lock Your PC. 
 
 Please Take a rest for your Health.
 
